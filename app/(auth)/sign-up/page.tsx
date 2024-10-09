@@ -15,6 +15,10 @@ import {
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import Tost from "@/components/context/Toast";
+import toast from "react-hot-toast";
+
+const URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 // Form schema with password confirmation
 const formSchema = z
@@ -23,7 +27,11 @@ const formSchema = z
     email: z.string().email(),
     password: z
       .string()
-      .min(8, { message: "Password must be at least 8 characters long." }),
+      .min(8, { message: "Password must be at least 8 characters long." })
+      .regex(/^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, {
+        message:
+          "Password must contain at least one uppercase letter, one number, and one special character.",
+      }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -45,23 +53,40 @@ export default function SignUp() {
   const router = useRouter();
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    console.log("Data::", values);
+    /* console.log("Data::", values); */
+
+    const { confirmPassword, ...formData } = values;
+    /* console.log("DEc", formData); */
+
     try {
-      const response = await fetch("/api/test", {
+      const response = await fetch(`${URL}/users`, {
         method: "POST",
-        body: JSON.stringify(values),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
       });
+
+      const errorData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(errorData?.detail || "Failed to create user");
+      }
       const data = await response.json();
       console.log("DATA:::", data);
       form.reset();
       router.push("/varify");
     } catch (error) {
-      console.log("Error", error);
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong.",
+      );
+      console.log("Error>>>---__", error);
     }
   };
 
   return (
     <>
+      <Tost />
       <div className="h-screen min-h-screen">
         <div className="max-w-5xl mx-auto h-full ">
           <div className="max-w-md mx-auto px-2 flex flex-col items-center pt-24 h-full">
