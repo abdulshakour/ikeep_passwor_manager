@@ -47,7 +47,7 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            <Link href="/signup">
+            <Link href="/sign-up">
               <Button className="bg-purple-600 hover:bg-purple-700 text-white text-lg px-8 py-6">
                 Get Started <ChevronRight className="ml-2 h-5 w-5" />
               </Button>

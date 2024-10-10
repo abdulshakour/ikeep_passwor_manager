@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -13,8 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { signIn } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { authenticate } from "@/components/action/actions";
 
 const formScheme = z.object({
   email: z.string().email(),
@@ -26,13 +26,6 @@ const formScheme = z.object({
 const url = process.env.NEXT_PUBLIC_BASE_URL;
 
 export default function Login() {
-  const search = useSearchParams();
-  const error = search.get("error");
-  const errorCode = search.get("code");
-
-  console.log("ERRRRRRRRRRRRk", errorCode);
-  console.log("errrr", error);
-
   const form = useForm<z.infer<typeof formScheme>>({
     resolver: zodResolver(formScheme),
     defaultValues: {
@@ -44,11 +37,9 @@ export default function Login() {
   const onSubmit = async (values: z.infer<typeof formScheme>) => {
     console.log("LOGIN", values);
     console.log("url", url);
+    const { email, password } = values;
     try {
-      const result = await signIn("credentials", {
-        ...values,
-        redirect: false,
-      });
+      const result = await authenticate(email, password);
 
       if (result?.error) {
         // Display the error message to the user
@@ -60,15 +51,6 @@ export default function Login() {
     } catch (error) {
       console.log("An error occurred:", error);
     }
-    // try {
-    //   const result = await signIn("credentials", {
-    //     ...values,
-    //     redirect: false,
-    //   });
-    //   console.log("DDDDD___--__", result);
-    // } catch (error) {
-    //   console.log("EROR", error);
-    // }
   };
   return (
     <>
@@ -124,6 +106,11 @@ export default function Login() {
                             {...field}
                           />
                         </FormControl>
+
+                        <p className="text-gray-600 text-sm font-medium underline ">
+                          forget password
+                        </p>
+
                         <FormMessage />
                       </FormItem>
                     )}
