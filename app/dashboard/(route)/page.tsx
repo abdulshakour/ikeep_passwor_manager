@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { signOut, useSession } from "next-auth/react";
+
 // Simulated encryption function (replace with actual encryption in production)
 const encrypt = (text: string) => btoa(text);
 const decrypt = (text: string) => atob(text);
@@ -45,6 +47,7 @@ export default function Dashboard() {
       password: encrypt("samplepass"),
     },
   ]);
+
   const [showPassword, setShowPassword] = useState<number | null>(null);
   const [newAccount, setNewAccount] = useState({
     web_name: "",
@@ -67,6 +70,10 @@ export default function Dashboard() {
     setNewAccount({ web_name: "", url: "", email: "", password: "" });
   };
 
+  const { data: session } = useSession();
+
+  console.log("{Dash}", session);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -79,6 +86,12 @@ export default function Dashboard() {
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
+          <button
+            className="py-2 px-8 m-6 bg-black text-white"
+            onClick={() => signOut()}
+          >
+            Sign Out
+          </button>
           <div className="flex space-x-4">
             <Dialog>
               <DialogTrigger asChild>

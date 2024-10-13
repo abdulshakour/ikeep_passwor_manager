@@ -1,6 +1,7 @@
-import NextAuth, { AuthError } from "next-auth";
+import NextAuth, { AuthError, type DefaultSession } from "next-auth";
+
 import Credentials from "next-auth/providers/credentials";
-// import { CredentialsSignin } from "next-auth";
+import axios from "axios";
 
 const URL = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -16,73 +17,76 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     Credentials({
       authorize: async (credentials) => {
-        let user;
-
-        if (!credentials?.email || !credentials?.password) return null;
-
-        const { csrfToken, callbackUrl, ...formData } = credentials;
-
-        const { email, password } = formData;
+        const { email, password } = credentials || {};
         try {
-          const response = await fetch(`${URL}/auth/login`, {
-            method: "POST",
-            headers: {
-              Accept: "application/json",
-              "Content-Type": "application/x-www-form-urlencoded",
+          const response = await axios.post(
+            `${URL}/auth/login`,
+            `grant_type=password&username=${email}&password=${password}&scope=&client_id=string&client_secret=string`,
+
+            {
+              withCredentials: true, // Include cookies with the login request
             },
-            body: `grant_type=password&username=${email}&password=${password}&scope=&client_id=string&client_secret=string`,
-          });
+          );
 
-          const data = await response.json();
-          if (!response.ok) {
-            throw new InvalidLoginError(data.detail);
-          }
+          const { access_token, expires_in } = response.data;
 
-          /*     console.log("FROM_BACK:::", data); */
-          user = data;
+          return {
+            access_token,
+            expires_at: Date.now() + expires_in * 1000,
+          };
         } catch (error) {
-          throw new InvalidLoginError(error.message);
+          console.log("UUUSER", error.response);
+          throw new InvalidLoginError("Failed to login");
         }
-
-        return user;
       },
     }),
   ],
-
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        /*  console.log("[from_CALLBACK]", user); */
-        token.accessToken = user.access_token;
-        token.expiresIn = Date.now() / 1000 + user.expires_in;
-        const userInf = await fetch(`${URL}/users/me`, {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token.accessToken}`,
+        // Store initial login information
+        return {
+          ...token,
+          access_token: user.access_token,
+          expires_at: user.expires_at,
+        };
+      }
+
+      // If the access token is still valid, return the token
+      if (Date.now() < token.expires_at) {
+        return token;
+      }
+
+      // Access token has expired, use the refresh token to get a new one
+      try {
+        const response = await axios.post(
+          `${URL}/auth/refresh`,
+          {},
+          {
+            withCredentials: true, // Important: ensures the refresh_token cookie is sent with the request
           },
-        });
-        const data = await userInf.json();
-        token.userInfo = data;
-        console.log("{{User}}", token.userInfo);
-      }
+        );
 
-      if (Date.now() > token.expiresAt) {
-        console.log("Token has expired");
-        // You might want to implement a refresh token mechanism here
-        // or return null to force a new sign in
-        return null;
-      }
+        const { access_token, expires_in } = response.data;
 
-      return token;
+        // Update token details
+        return {
+          ...token,
+          access_token,
+          expires_at: Date.now() + expires_in * 1000,
+        };
+      } catch (error) {
+        console.log("Error", error.response);
+        // console.error(
+        //   "Error refreshing access token:",
+        //   error.response?.data || error.message,
+        // );
+        return { ...token, error: "RefreshTokenError" };
+      }
     },
-
     async session({ session, token }) {
-      /*   console.log("[[session]]", token); */
-      session.accessToken = token.accessToken;
-      session.refreshToken = token.refreshToken;
-      session.userInfo = token.userInf;
-
+      session.access_token = token.access_token;
+      session.error = token.error;
       return session;
     },
   },

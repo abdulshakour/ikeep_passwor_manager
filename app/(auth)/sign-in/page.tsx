@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { authenticate } from "@/components/action/actions";
+import { useRouter } from "next/navigation";
 
 const formScheme = z.object({
   email: z.string().email(),
@@ -34,6 +35,8 @@ export default function Login() {
     },
   });
 
+  const router = useRouter();
+
   const onSubmit = async (values: z.infer<typeof formScheme>) => {
     console.log("LOGIN", values);
     console.log("url", url);
@@ -47,6 +50,7 @@ export default function Login() {
       } else {
         // If login is successful, redirect or perform other actions
         console.log("Login successful", result);
+        router.push("/dashboard");
       }
     } catch (error) {
       console.log("An error occurred:", error);
